@@ -35,7 +35,7 @@ class TitleTableViewCell: UITableViewCell {
         
         button.setImage(image, for: .normal)
         button.translatesAutoresizingMaskIntoConstraints = false
-        button.tintColor = .white
+        button.tintColor = UIColor(named: "iconColor")
         return button
     }()
     

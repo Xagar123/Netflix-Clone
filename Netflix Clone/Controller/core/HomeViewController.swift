@@ -20,10 +20,15 @@ class HomeViewController: UIViewController {
     
     //MARK: -Properties
     
+    private var randomTendingMovie: Title?
+    private var headerView: HeroHeaderUIView?
+    
     let sectionTitle:[String] = ["Trending Movies","Tranding TV","Popular" ,"Upcomming Movies","Top rated"]
+    
     
     private let homeFeedTable: UITableView = {
         let table = UITableView(frame: .zero, style: .grouped)
+        table.backgroundColor = .black
         table.register(CollectionViewTableViewCell.self, forCellReuseIdentifier: CollectionViewTableViewCell.identifier)
         return table
     }()
@@ -32,11 +37,13 @@ class HomeViewController: UIViewController {
     //MARK: -Lifecycle
     override func viewDidLoad() {
         super.viewDidLoad()
+        
         configureUI()
         configureNavBar()
         
+        
     }
-    
+   
     override func viewDidLayoutSubviews() {
         super.viewDidLayoutSubviews()
         homeFeedTable.frame = view.bounds
@@ -48,21 +55,42 @@ class HomeViewController: UIViewController {
     //MARK: -Helper
     
     func configureUI() {
-        view.backgroundColor = .systemBackground
+        
         
         view.addSubview(homeFeedTable)
         homeFeedTable.delegate = self
         homeFeedTable.dataSource = self
         
-        let headerView = HeroHeaderUIView(frame: CGRect(x: 0, y: 0, width: view.frame.width, height: 450))
+        headerView = HeroHeaderUIView(frame: CGRect(x: 0, y: 0, width: view.frame.width, height: 450))
         homeFeedTable.tableHeaderView = headerView
+        configureHeroHeaderView()
         
     }
     
     private func configureNavBar() {
+        
+        // resizing image dimension
         var image = UIImage(named: "netflixLogo")
-        image = image?.withRenderingMode(.alwaysOriginal)
-        navigationItem.leftBarButtonItem = UIBarButtonItem(image: image, style: .done, target: self, action: nil)
+        let targetSize = CGSize(width: 60, height: 60)
+        
+        let widthScaleRatio = targetSize.width / image!.size.width
+        let heightScaleRatio = targetSize.height / image!.size.height
+        
+        let scaleFactor = min(widthScaleRatio, heightScaleRatio)
+        
+        let scaledImageSize = CGSize(
+            width: image!.size.width * scaleFactor,
+            height: image!.size.height * scaleFactor
+        )
+        
+        let renderer = UIGraphicsImageRenderer(size: scaledImageSize)
+        var scaledImage = renderer.image { _ in
+            image!.draw(in: CGRect(origin: .zero, size: scaledImageSize))
+        }
+        
+        
+        scaledImage = scaledImage.withRenderingMode(.alwaysOriginal)
+        navigationItem.leftBarButtonItem = UIBarButtonItem(image: scaledImage, style: .done, target: self, action: nil)
         
         navigationItem.rightBarButtonItems = [
             
@@ -71,6 +99,26 @@ class HomeViewController: UIViewController {
         
         navigationController?.navigationBar.tintColor = .white
         
+        
+    }
+    
+    func configureHeroHeaderView() {
+        
+        APICaller.shared.getTrendingMovie { [weak self] result in
+            switch result {
+                
+            case .success(let title):
+                print("movie title ====== \(title)=======")
+                let selectedTitle = title.randomElement()
+                print("==============",selectedTitle!,"=============")
+                self?.randomTendingMovie = selectedTitle
+                
+                self?.headerView?.configure(with: TitleViewModel(titleName: (selectedTitle?.original_title) ?? "", posterURL: (selectedTitle?.poster_path) ?? "" ))
+                print("after completion")
+            case .failure(let error):
+                print(error.localizedDescription)
+            }
+        }
     }
     
 }
@@ -88,6 +136,7 @@ extension HomeViewController: UITableViewDataSource {
     func tableView(_ tableView: UITableView, cellForRowAt indexPath: IndexPath) -> UITableViewCell {
         guard let cell = tableView.dequeueReusableCell(withIdentifier: CollectionViewTableViewCell.identifier, for: indexPath) as? CollectionViewTableViewCell else { return UITableViewCell()}
         
+        cell.delegate = self
         
         switch indexPath.section {
         case Section.TrendingMovie.rawValue :
@@ -161,6 +210,7 @@ extension HomeViewController: UITableViewDataSource {
         
         //set header title
         func tableView(_ tableView: UITableView, titleForHeaderInSection section: Int) -> String? {
+           
             return sectionTitle[section]
         }
         
@@ -186,4 +236,20 @@ extension HomeViewController: UITableViewDelegate {
     func tableView(_ tableView: UITableView, heightForRowAt indexPath: IndexPath) -> CGFloat {
         return 200
     }
+}
+
+//MARK: -
+
+extension HomeViewController: CollectionViewTableViewCellDelegate {
+    
+    func collectionViewTableViewcellDidTapCell(_ cell: CollectionViewTableViewCell, viewModel: TitlePreviewViewModel) {
+        DispatchQueue.main.async { [weak self] in
+            let vc = TitlePreviewViewController()
+            vc.configure(with: viewModel)
+            self?.navigationController?.pushViewController(vc, animated: true)
+        }
+       
+    }
+    
+    
 }

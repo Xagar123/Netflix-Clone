@@ -10,6 +10,8 @@ import Foundation
 struct Constant {
     static let API_Key = "04a896eae597412a6b31c49e1ac1649f"
     static let baseURL = "https://api.themoviedb.org"
+    static let YoutubeAPI_KEY = "AIzaSyDfxYf2mlBkyPQB-8P4gdF8piimuNGHiSw"
+    static let Youtube_BaseURL = "https://youtube.googleapis.com/youtube/v3/search?"
 }
 
 enum APIError: Error {
@@ -146,6 +148,60 @@ class APICaller {
         task.resume()
     }
     
+    
+    func search(with query: String,completion: @escaping (Result<[Title], Error>)-> Void) {
+        
+        guard let query = query.addingPercentEncoding(withAllowedCharacters: .urlHostAllowed) else { return}
+        
+        guard let url = URL(string: "\(Constant.baseURL)/3/search/movie?api_key=\(Constant.API_Key)&query=\(query)") else {
+            return
+        }
+        
+        let task = URLSession.shared.dataTask(with: URLRequest(url: url)) { data, _, error in
+            
+            guard let data = data , error == nil else { return}
+            
+            do {
+                let result = try JSONDecoder().decode(TrandingTitleResponse.self, from: data)
+                completion(.success(result.results))
+                
+            }catch {
+                completion(.failure(APIError.faildToGetData))
+                print(error.localizedDescription)
+            }
+        }
+        task.resume()
+    }
+    
+    func getYoutubeMovie(with query: String,completion: @escaping (Result<VideoElement, Error>)-> Void) {
+        
+        
+        guard let query = query.addingPercentEncoding(withAllowedCharacters: .urlHostAllowed) else { return}
+        
+        guard let url = URL(string: "\(Constant.Youtube_BaseURL)q=\(query)&key=\(Constant.YoutubeAPI_KEY)") else {
+            return
+        }
+        
+        let task = URLSession.shared.dataTask(with: URLRequest(url: url)) { data, _, error in
+            
+            guard let data = data , error == nil else { return}
+            
+            do {
+                let decoder = JSONDecoder()
+                decoder.keyDecodingStrategy = .convertFromSnakeCase
+                let results = try decoder.decode(YoutubeSearchResponce.self, from: data)
+//                let result = try JSONSerialization.jsonObject(with: data, options: .fragmentsAllowed)
+                completion(.success(results.items[0]))
+                
+            }catch {
+             
+                completion(.failure(error))
+                print(error.localizedDescription)
+            }
+        }
+        task.resume()
+        
+    }
 }
 
 

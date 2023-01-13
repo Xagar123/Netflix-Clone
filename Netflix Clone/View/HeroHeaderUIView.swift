@@ -89,4 +89,15 @@ class HeroHeaderUIView: UIView {
         graidentLayer.frame = bounds
         layer.addSublayer(graidentLayer)
     }
+    
+    public func configure(with model: TitleViewModel) {
+        print("before guard===================")
+        guard let url = URL(string: "https://image.tmdb.org/t/p/w500/\(model.posterURL)") else {
+            print("error=============================")
+            return}
+        
+        print("image before set")
+        heroImageView.sd_setImage(with: url)
+        print("image after set")
+    }
 }
